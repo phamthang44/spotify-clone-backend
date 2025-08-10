@@ -1,0 +1,47 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/spotify_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:default_password}
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgresSQLDialect
+    show_sql: true
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: embedded
+      platform: postgresql
+      schema-locations:
+        - classpath:init_db.sql
+
+cloudinary:
+  cloudName: ${CLOUDINARY_CLOUD_NAME}
+  apiKey: ${CLOUDINARY_API_KEY}
+  apiSecret: ${CLOUDINARY_API_SECRET}
+
+open:
+  api:
+    serverUrl: http://localhost:8080
+    title: API Service for Development Environment
+    version: v1.0.0
+    serverName: server API for development in Spotify project
+    description: This is the API documentation for the development environment of the Spotify project. It includes endpoints for managing Songs, Playlist, Library.
+
+
+
+logging:
+  level:
+    org.hibernate.orm.jdbc.bind: trace
+
+# Swagger (springdoc-openapi)
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
