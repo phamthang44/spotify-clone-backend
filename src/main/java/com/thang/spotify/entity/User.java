@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Builder
 @Entity
-@Table(name = "tbl_user")
+@Table(name = "user")
 public class User extends BaseEntity {
 
     @Column(unique = true, nullable = false, name = "display_name")
