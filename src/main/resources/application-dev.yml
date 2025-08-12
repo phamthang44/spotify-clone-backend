@@ -9,16 +9,11 @@ spring:
   jpa:
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgresSQLDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
     show_sql: true
     hibernate:
       ddl-auto: none
-  sql:
-    init:
-      mode: embedded
-      platform: postgresql
-      schema-locations:
-        - classpath:init_db.sql
+
 
 cloudinary:
   cloudName: ${CLOUDINARY_CLOUD_NAME}
@@ -32,8 +27,6 @@ open:
     version: v1.0.0
     serverName: server API for development in Spotify project
     description: This is the API documentation for the development environment of the Spotify project. It includes endpoints for managing Songs, Playlist, Library.
-
-
 
 logging:
   level:

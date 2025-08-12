@@ -6,7 +6,9 @@ public enum UserType {
     @JsonProperty("admin")
     ADMIN,
     @JsonProperty("user")
-    USER;
+    LISTENER,
+    @JsonProperty("artist")
+    ARTIST;
 
     public static UserType fromString(String type) {
         for (UserType userType : UserType.values()) {

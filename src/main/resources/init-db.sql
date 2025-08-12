@@ -22,7 +22,7 @@ CREATE TABLE public.role (
 );
 
 DROP TABLE IF EXISTS public.user CASCADE;
-CREATE TABLE public.user (
+CREATE TABLE public.tbl_user (
                                  id bigserial NOT NULL,
                                  display_name varchar(255) NOT NULL,
                                  date_of_birth date NOT NULL,
@@ -65,10 +65,10 @@ CREATE TABLE public.artist (
                                name VARCHAR(255) NOT NULL,
                                bio TEXT,
                                avatar_url TEXT,
-                               country VARCHAR(100),
+                               country_id BIGINT REFERENCES public.country(id) ON DELETE SET NULL,
                                debut_year INT,
-                               created_at TIMESTAMP DEFAULT NOW(),
-                               updated_at TIMESTAMP DEFAULT NOW()
+                               created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                               updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
 -- ============================================
@@ -80,11 +80,11 @@ CREATE TABLE public.album (
                               title VARCHAR(255) NOT NULL,
                               artist_id BIGINT NOT NULL REFERENCES public.artist(id) ON DELETE CASCADE,
                               cover_url TEXT,
-                              release_date DATE,
+                              release_date TIMESTAMP WITHOUT TIME ZONE,
                               total_tracks INT DEFAULT 0,
                               description TEXT,
-                              created_at TIMESTAMP DEFAULT NOW(),
-                              updated_at TIMESTAMP DEFAULT NOW()
+                              created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                              updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
 -- ============================================
@@ -94,18 +94,18 @@ DROP TABLE IF EXISTS public.song CASCADE;
 CREATE TABLE public.song (
                              id BIGSERIAL PRIMARY KEY,
                              title VARCHAR(255) NOT NULL,
-                             artist_id BIGINT NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
+                             artist_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
                              album_id BIGINT REFERENCES public.album(id) ON DELETE SET NULL,
                              duration INT NOT NULL, -- seconds
-                             genre VARCHAR(100),
-                             release_date DATE,
+                             genre_id BIGINT REFERENCES public.genre(id) ON DELETE SET NULL,
+                             release_date timestamp(6),
                              cover_url TEXT,
                              audio_url TEXT,
                              status public.e_song_status NOT NULL DEFAULT 'PUBLISHED',
                              play_count BIGINT DEFAULT 0,
                              like_count BIGINT DEFAULT 0,
-                             created_at TIMESTAMP DEFAULT NOW(),
-                             updated_at TIMESTAMP DEFAULT NOW()
+                             created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                             updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
 -- ============================================
@@ -115,12 +115,12 @@ DROP TABLE IF EXISTS public.playlist CASCADE;
 CREATE TABLE public.playlist (
                                  id BIGSERIAL PRIMARY KEY,
                                  title VARCHAR(255) NOT NULL,
-                                 owner_id BIGINT NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
+                                 owner_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
                                  cover_url TEXT,
                                  description TEXT,
                                  privacy public.e_privacy NOT NULL DEFAULT 'PUBLIC',
-                                 created_at TIMESTAMP DEFAULT NOW(),
-                                 updated_at TIMESTAMP DEFAULT NOW()
+                                 created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                                 updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
 -- Playlist-Song (Many-to-Many)
@@ -128,6 +128,7 @@ DROP TABLE IF EXISTS public.playlist_song CASCADE;
 CREATE TABLE public.playlist_song (
                                       playlist_id BIGINT NOT NULL REFERENCES public.playlist(id) ON DELETE CASCADE,
                                       song_id BIGINT NOT NULL REFERENCES public.song(id) ON DELETE CASCADE,
+                                      track_number INT NOT NULL,
                                       added_at TIMESTAMP DEFAULT NOW(),
                                       PRIMARY KEY (playlist_id, song_id)
 );
@@ -138,10 +139,10 @@ CREATE TABLE public.playlist_song (
 DROP TABLE IF EXISTS public.playback_history CASCADE;
 CREATE TABLE public.playback_history (
                                          id BIGSERIAL PRIMARY KEY,
-                                         user_id BIGINT NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
+                                         user_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
                                          song_id BIGINT NOT NULL REFERENCES public.song(id) ON DELETE CASCADE,
                                          played_at TIMESTAMP DEFAULT NOW(),
-                                         device public.e_device
+                                         device VARCHAR(20) CHECK (device IN ('MOBILE', 'DESKTOP', 'WEB')) NOT NULL DEFAULT 'WEB'
 );
 
 -- ============================================
@@ -149,10 +150,8 @@ CREATE TABLE public.playback_history (
 -- ============================================
 DROP TABLE IF EXISTS public.song_like CASCADE;
 CREATE TABLE public.song_like (
-                                  user_id BIGINT NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
+                                  user_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
                                   song_id BIGINT NOT NULL REFERENCES public.song(id) ON DELETE CASCADE,
-                                  created_at TIMESTAMP DEFAULT NOW(),
-                                  updated_at TIMESTAMP DEFAULT NOW(),
                                   PRIMARY KEY (user_id, song_id)
 );
 
@@ -161,9 +160,10 @@ CREATE TABLE public.song_like (
 -- ============================================
 DROP TABLE IF EXISTS public.follow_artist CASCADE;
 CREATE TABLE public.follow_artist (
-                                      user_id BIGINT NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
+                                      user_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
                                       artist_id BIGINT NOT NULL REFERENCES public.artist(id) ON DELETE CASCADE,
-                                      followed_at TIMESTAMP DEFAULT NOW(),
+                                      followed_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                                      updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
                                       PRIMARY KEY (user_id, artist_id)
 );
 
@@ -175,11 +175,14 @@ CREATE TABLE public.genre (
                               id BIGSERIAL PRIMARY KEY,
                               name VARCHAR(100) UNIQUE NOT NULL,
                               description TEXT
-);
 
+);
+DROP TABLE IF EXISTS public.song_genre CASCADE;
 CREATE TABLE song_genre (
                             song_id BIGINT REFERENCES song(id) ON DELETE CASCADE,
                             genre_id BIGINT REFERENCES genre(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
                             PRIMARY KEY (song_id, genre_id)
 );
 
@@ -187,7 +190,15 @@ CREATE TABLE song_genre (
 DROP TABLE IF EXISTS public.search_log CASCADE;
 CREATE TABLE public.search_log (
                                    id BIGSERIAL PRIMARY KEY,
-                                   user_id BIGINT REFERENCES public.user(id) ON DELETE SET NULL,
+                                   user_id BIGINT REFERENCES public.tbl_user(id) ON DELETE SET NULL,
                                    keyword VARCHAR(255) NOT NULL,
                                    searched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE public.country (
+                                 id BIGSERIAL PRIMARY KEY,
+                                 name VARCHAR(100) NOT NULL UNIQUE,
+                                 code VARCHAR(10) NOT NULL UNIQUE,
+                                 created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                                 updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );

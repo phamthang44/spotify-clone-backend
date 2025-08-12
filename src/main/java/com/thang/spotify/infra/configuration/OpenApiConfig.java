@@ -47,7 +47,7 @@ public class OpenApiConfig {
     public GroupedOpenApi groupedOpenApi() {
         return GroupedOpenApi.builder()
                 .group("api-service-1")
-                .packagesToScan("com.greenwich.ecommerce.controller")
+                .packagesToScan("com.thang.spotify.controller")
                 .build();
     }
 }

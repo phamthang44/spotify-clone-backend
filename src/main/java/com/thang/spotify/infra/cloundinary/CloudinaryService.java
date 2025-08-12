@@ -19,9 +19,29 @@ public class CloudinaryService {
         this.cloudinary = cloudinaryConfig.getCloudinary();
     }
 
-    public String uploadFile(MultipartFile file) {
+    public String uploadAvatarUserFile(MultipartFile file) {
         try {
             File uploadedFile = convertToFile(file); // convert MultipartFile to File
+
+            Map<String, Object> options = ObjectUtils.asMap(
+                    "folder", "spotify-avatar"
+            );
+
+            Map<?, ?>uploadResult = cloudinary.uploader().upload(uploadedFile, ObjectUtils.emptyMap());
+            return uploadResult.get("secure_url").toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+        }
+    }
+
+    public String uploadSongCoverImageFile(MultipartFile file) {
+        try {
+            File uploadedFile = convertToFile(file); // convert MultipartFile to File
+
+            Map<String, Object> options = ObjectUtils.asMap(
+                    "folder", "spotify-cover"
+            );
+
             Map<?, ?>uploadResult = cloudinary.uploader().upload(uploadedFile, ObjectUtils.emptyMap());
             return uploadResult.get("secure_url").toString();
         } catch (IOException e) {
