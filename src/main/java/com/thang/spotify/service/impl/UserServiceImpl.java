@@ -1,4 +1,4 @@
-package com.thang.spotify.service.impl.user;
+package com.thang.spotify.service.impl;
 
 import com.thang.spotify.common.enums.ErrorCode;
 import com.thang.spotify.common.enums.Gender;
@@ -9,11 +9,10 @@ import com.thang.spotify.entity.Role;
 import com.thang.spotify.entity.User;
 import com.thang.spotify.exception.*;
 //import com.thang.spotify.infra.email.EmailService;
-import com.thang.spotify.repository.other.RoleRepository;
-import com.thang.spotify.repository.user.UserRepository;
-import com.thang.spotify.service.user.UserService;
+import com.thang.spotify.repository.RoleRepository;
+import com.thang.spotify.repository.UserRepository;
+import com.thang.spotify.service.UserService;
 import com.thang.spotify.service.validator.UserValidator;
-import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

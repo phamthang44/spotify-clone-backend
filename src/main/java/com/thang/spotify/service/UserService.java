@@ -1,4 +1,4 @@
-package com.thang.spotify.service.user;
+package com.thang.spotify.service;
 
 import com.thang.spotify.dto.request.auth.RegisterRequest;
 

@@ -1,4 +1,4 @@
-package com.thang.spotify.repository.other;
+package com.thang.spotify.repository;
 
 import com.thang.spotify.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;

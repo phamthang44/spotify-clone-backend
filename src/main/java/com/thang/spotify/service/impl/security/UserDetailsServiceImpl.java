@@ -2,7 +2,7 @@ package com.thang.spotify.service.impl.security;
 
 import com.thang.spotify.entity.User;
 import com.thang.spotify.infra.security.SecurityUserDetails;
-import com.thang.spotify.repository.user.UserRepository;
+import com.thang.spotify.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

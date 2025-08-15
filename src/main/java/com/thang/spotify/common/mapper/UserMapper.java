@@ -2,6 +2,7 @@ package com.thang.spotify.common.mapper;
 
 import com.thang.spotify.common.enums.Gender;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
+import com.thang.spotify.dto.response.user.UserResponse;
 import com.thang.spotify.entity.User;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
@@ -18,6 +19,6 @@ public interface UserMapper {
     @Mapping(target = "dateOfBirth", ignore = true)
     User toUser(RegisterRequest dto);
 
-
+    UserResponse toUserResponse(User user);
 
 }

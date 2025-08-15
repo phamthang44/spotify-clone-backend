@@ -7,7 +7,8 @@ import java.util.Objects;
 
 @Embeddable
 public class PlayListSongId implements Serializable {
-    private Long playListId;
+
+    private Long playlistId;
     private Long songId;
 
     @Override
@@ -15,11 +16,11 @@ public class PlayListSongId implements Serializable {
         if (this == o) return true;
         if (!(o instanceof PlayListSongId)) return false;
         PlayListSongId that = (PlayListSongId) o;
-        return playListId.equals(that.playListId) && songId.equals(that.songId);
+        return playlistId.equals(that.playlistId) && songId.equals(that.songId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(songId, playListId);
+        return Objects.hash(songId, playlistId);
     }
 }

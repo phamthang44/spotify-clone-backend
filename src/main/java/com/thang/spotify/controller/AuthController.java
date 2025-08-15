@@ -6,7 +6,7 @@ import com.thang.spotify.dto.response.auth.LoginResponse;
 import com.thang.spotify.dto.response.ResponseData;
 import com.thang.spotify.infra.security.SecurityUserDetails;
 import com.thang.spotify.service.impl.security.JwtTokenService;
-import com.thang.spotify.service.impl.user.UserServiceImpl;
+import com.thang.spotify.service.impl.UserServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

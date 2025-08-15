@@ -1,6 +1,8 @@
 package com.thang.spotify.common.util;
 
 import com.thang.spotify.exception.InvalidDataException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 public class Util {
 
@@ -109,5 +111,16 @@ public class Util {
         } catch (NumberFormatException e) {
             throw new NumberFormatException(num + " is not a long number");
         }
+    }
+
+    public static void validatePageNoPageSize(Integer pageNo, Integer pageSize) {
+        if (pageNo == null || pageSize == null || pageNo < 0 || pageSize < 1) {
+            throw new InvalidDataException("Invalid page number or page size");
+        }
+    }
+
+    public static Pageable getPageable(Integer pageNo, Integer pageSize) {
+        validatePageNoPageSize(pageNo, pageSize);
+        return PageRequest.of(getPageNo(pageNo), pageSize);
     }
 }
