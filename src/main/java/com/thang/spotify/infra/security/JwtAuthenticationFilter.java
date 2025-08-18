@@ -1,7 +1,10 @@
 package com.thang.spotify.infra.security;
 
+import com.thang.spotify.exception.UnauthorizedException;
 import com.thang.spotify.service.impl.security.JwtTokenService;
 import com.thang.spotify.service.impl.security.UserDetailsServiceImpl;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,10 +46,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         token = authHeader.substring(7); // Remove "Bearer "
         try {
             username = jwtTokenService.extractUsername(token);
-        } catch (Exception ex) {
-            log.warn("Invalid JWT token: {}", ex.getMessage());
-            filterChain.doFilter(request, response);
-            return;
+        } catch (ExpiredJwtException ex) {
+            log.warn("JWT expired: {}", ex.getMessage());
+            throw new UnauthorizedException("JWT expired");
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.warn("Invalid JWT: {}", ex.getMessage());
+            throw new UnauthorizedException("Invalid JWT");
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {

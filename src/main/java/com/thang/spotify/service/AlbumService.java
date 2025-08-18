@@ -25,4 +25,7 @@ public interface AlbumService {
     List<Album> getAllAlbums();
     List<AlbumResponse> getDefaultAlbums();
     AlbumResponse getAlbumById(Long id);
+
+    List<Album> getAlbumsByGenre(Long genreId);
+    List<AlbumResponse> getAlbumsByGenreResponse(Long genreId);
 }

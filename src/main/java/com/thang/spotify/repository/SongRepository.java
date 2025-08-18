@@ -2,6 +2,7 @@ package com.thang.spotify.repository;
 
 import com.thang.spotify.common.enums.SongStatus;
 import com.thang.spotify.entity.Song;
+import com.thang.spotify.entity.SongGenre;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,5 +23,16 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     @Query("SELECT s FROM Song s")
     List<Song> getSongs(Pageable pageable);
+
+
+    @Query("""
+        SELECT s FROM Song s
+        JOIN s.songGenres sg
+        WHERE sg.genre.id = :genreId
+    """)
+    Page<Song> findBySongGenreId(@Param("genreId") Long genreId, Pageable pageable);
+
+    @Query("SELECT s FROM Song s WHERE s.genre.id = :genreId")
+    Page<Song> findByGenreId(@Param("genreId") Long genreId, Pageable pageable);
 
 }

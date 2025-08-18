@@ -88,7 +88,6 @@ public class CatalogServiceImpl implements CatalogService {
     @Override
     public CatalogDTO getDefaultData() {
 
-//        List<SongResponse> songs = songService.getSongsDefault();
         List<AlbumResponse> albums = albumService.getDefaultAlbums();
         List<ArtistResponse> artists = artistService.getAllArtistResponsesDefault();
         List<GenreResponse> genres = genreService.getAllGenreResponsesDefault();

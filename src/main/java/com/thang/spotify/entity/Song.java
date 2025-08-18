@@ -37,6 +37,10 @@ public class Song extends BaseEntity {
     @OneToMany(mappedBy = "song", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SongGenre> songGenres = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "genre_id", nullable = false)
+    private Genre genre;
+
     @Column(name = "release_date", nullable = false)
     private LocalDateTime releaseDate; // Release date of the song
 

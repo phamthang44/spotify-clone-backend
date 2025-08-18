@@ -13,7 +13,10 @@ spring:
     show_sql: true
     hibernate:
       ddl-auto: none
-
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 cloudinary:
   cloudName: ${CLOUDINARY_CLOUD_NAME}

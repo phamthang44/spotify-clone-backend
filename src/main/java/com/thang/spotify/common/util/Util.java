@@ -123,4 +123,25 @@ public class Util {
         validatePageNoPageSize(pageNo, pageSize);
         return PageRequest.of(getPageNo(pageNo), pageSize);
     }
+
+    public static void validateNumber(Number number) {
+        if (number == null) {
+            throw new InvalidDataException("Number cannot be null");
+        }
+        if (number instanceof Integer) {
+            isIntegerNumber((Integer) number);
+        } else if (number instanceof Double) {
+            isDoubleNumber((Double) number);
+        } else if (number instanceof Long) {
+            isLongNumber((Long) number);
+        } else {
+            throw new InvalidDataException("Unsupported number type: " + number.getClass().getSimpleName());
+        }
+    }
+
+    public static void isLessThanZero(Long number) {
+        if (number == null || number < 0) {
+            throw new InvalidDataException("Number must be greater than or equal to zero");
+        }
+    }
 }
