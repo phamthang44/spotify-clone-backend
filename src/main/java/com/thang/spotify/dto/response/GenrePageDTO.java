@@ -13,5 +13,5 @@ import java.util.List;
 public class GenrePageDTO {
     private Long genreId;
     private String genreName;
-    private List<SectionDTO> sections;
+    private List<SectionDTO<?>> sections;
 }

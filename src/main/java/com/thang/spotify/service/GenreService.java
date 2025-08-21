@@ -11,4 +11,5 @@ public interface GenreService {
     Genre getGenreById(Long id);
     List<GenreResponse> getAllGenreResponses();
 
+    List<Genre> searchGenres(String query);
 }

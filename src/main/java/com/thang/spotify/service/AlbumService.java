@@ -1,6 +1,7 @@
 package com.thang.spotify.service;
 
 import com.thang.spotify.dto.response.album.AlbumResponse;
+import com.thang.spotify.dto.response.album.SearchAlbumResponse;
 import com.thang.spotify.entity.Album;
 
 import java.util.List;
@@ -24,8 +25,10 @@ public interface AlbumService {
 
     List<Album> getAllAlbums();
     List<AlbumResponse> getDefaultAlbums();
-    AlbumResponse getAlbumById(Long id);
+    AlbumResponse getAlbumResponseById(Long id);
 
-    List<Album> getAlbumsByGenre(Long genreId);
+//    List<Album> getAlbumsByGenre(Long genreId);
     List<AlbumResponse> getAlbumsByGenreResponse(Long genreId);
+    List<SearchAlbumResponse> searchByName(String albumName);
+
 }

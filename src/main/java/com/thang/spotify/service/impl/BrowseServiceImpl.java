@@ -1,17 +1,18 @@
 package com.thang.spotify.service.impl;
 
+import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.response.GenrePageDTO;
+import com.thang.spotify.dto.response.ResultsResponse;
 import com.thang.spotify.dto.response.SectionDTO;
-import com.thang.spotify.dto.response.album.AlbumResponse;
 import com.thang.spotify.dto.response.song.SongResponse;
-import com.thang.spotify.exception.InvalidDataException;
 import com.thang.spotify.exception.ResourceNotFoundException;
-import com.thang.spotify.service.AlbumService;
 import com.thang.spotify.service.BrowseService;
 import com.thang.spotify.service.GenreService;
 import com.thang.spotify.service.SongService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +24,6 @@ public class BrowseServiceImpl implements BrowseService {
 
     private final SongService songService;
     private final GenreService genreService;
-    private final AlbumService albumService;
 
     @Override
     public GenrePageDTO getGenrePageById(Long genreId) {
@@ -41,16 +41,14 @@ public class BrowseServiceImpl implements BrowseService {
         }
 
         // Fetch songs and albums for the genre
-        var songs = songService.getSongsByGenreId(genreId);
-
-        List<SectionDTO> sections = List.of(
+        List<SectionDTO<?>> sections = List.of(
                 SectionDTO.<SongResponse>builder()
                         .title("Top Songs")
-                        .items(songs)
+                        .items(songService.getSongsByGenreIdAndOrderByLikeCount(genreId))
                         .build(),
-                SectionDTO.<AlbumResponse>builder()
-                        .title("Albums")
-                        .items(albumService.getAlbumsByGenre(genreId))
+                SectionDTO.<SongResponse>builder()
+                        .title("New Releases")
+                        .items(songService.getLatestSongsByGenreOrderByReleaseDate(genreId))
                         .build()
         );
 
@@ -59,6 +57,8 @@ public class BrowseServiceImpl implements BrowseService {
         return GenrePageDTO.builder()
                 .genreId(genreId)
                 .genreName(genre.getName())
-                .sections();
+                .sections(sections)
+                .build();
     }
+
 }

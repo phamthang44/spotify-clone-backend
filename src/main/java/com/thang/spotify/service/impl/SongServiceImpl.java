@@ -3,6 +3,7 @@ package com.thang.spotify.service.impl;
 import com.thang.spotify.common.mapper.SongMapper;
 import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.response.PageResponse;
+import com.thang.spotify.dto.response.song.SearchSongResponse;
 import com.thang.spotify.dto.response.song.SongResponse;
 import com.thang.spotify.entity.Song;
 import com.thang.spotify.entity.SongGenre;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -102,24 +104,6 @@ public class SongServiceImpl implements SongService {
     }
 
     @Override
-    public PageResponse<SongResponse> getSongsByGenre(SongGenre songGenre) {
-        if (songGenre == null) {
-            throw new InvalidDataException("Song genre cannot be null");
-        }
-
-        Pageable pageable = Util.getPageable(0, 50); // Default page size of 50
-
-        Long genreId = songGenre.getGenre().getId();
-
-        if (genreId == null || genreId <= 0) {
-            throw new InvalidDataException("Genre ID cannot be null or less than or equal to zero");
-        }
-
-
-        throw new ResourceNotFoundException("No songs found for genre: " + songGenre.getGenre().getName());
-    }
-
-    @Override
     public List<SongResponse> getSongsByGenreId(Long genreId) {
         Pageable pageable = Util.getPageable(0, 50); // Default page size of 50
 
@@ -128,18 +112,23 @@ public class SongServiceImpl implements SongService {
         if (!isValid) {
             throw new InvalidDataException("Invalid genre ID: " + genreId);
         }
-        return toSongPageResponse(genreId, pageable);
+
+        Page<Song> songPage = songRepository.findByGenreId(genreId, pageable);
+        return toSongPageResponse(songPage);
     }
 
     @Override
     public Song getSongById(Long id) {
-        return null;
+        songValidator.validateSongId(id);
+        log.info("Song service : Fetching song entity with ID: {}", id);
+        return songRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Song not found with ID: " + id));
     }
 
     @Override
     public SongResponse getSongResponseById(Long id) {
         songValidator.validateSongId(id);
-        log.info("Song service : Fetching song with ID: {}", id);
+        log.info("Song service : Fetching song response with ID: {}", id);
         Song song = songRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Song not found with ID: " + id));
         return getSongResponse(song);
@@ -166,21 +155,21 @@ public class SongServiceImpl implements SongService {
     }
 
     @Override
-    public Page<Song> searchSongs(Specification<Song> spec, Pageable pageable) {
-        return null;
-    }
+    public List<SearchSongResponse> searchSongs(String keyword) {
 
-    @Override
-    public List<SongResponse> getSongsDefault() {
-
-        List<Song> songs = songRepository.getSongs(PageRequest.of(0, 50));
-
-        if (!songs.isEmpty()) {
-                return songs.stream()
-                        .map(songMapper::toSongResponse)
-                        .toList();
+        Pageable pageable = Util.getPageable(0, 10);
+        log.info("Song service : Searching songs with keyword: {}", keyword);
+        Page<Song> songs = songRepository.findByNameContainingIgnoreCase(keyword, pageable);
+        if (!songs.getContent().isEmpty()) {
+            return songs.getContent().stream()
+                    .map(song -> {
+                        SearchSongResponse songResponse = new SearchSongResponse();
+                        songResponse.setType("song");
+                        songResponse.setSong(getSongResponse(song));
+                        return songResponse;
+                    })
+                    .toList();
         }
-
         return List.of();
     }
 
@@ -188,15 +177,14 @@ public class SongServiceImpl implements SongService {
         return genreId != null && genreId > 0;
     }
 
-    private List<SongResponse> toSongPageResponse(Long genreId, Pageable pageable) {
-        Page<Song> songPage = songRepository.findByGenreId(genreId, pageable);
+    private List<SongResponse> toSongPageResponse(Page<Song> songPage) {
         if (songPage.hasContent()) {
             List<Song> songs = songPage.getContent();
             return songs.stream()
                     .map(this::getSongResponse)
                     .toList();
         }
-        throw new ResourceNotFoundException("No songs found for genre: " + genreService.getGenreById(genreId).getName());
+        throw new ResourceNotFoundException("There are no songs available");
     }
 
     private List<String> convertGenresToStringList(Set<SongGenre> songGenres) {
@@ -211,9 +199,47 @@ public class SongServiceImpl implements SongService {
 
     @Override
     public List<Song> getSongsEntityByGenreId(Long genreId) {
-
         //todo here:
+        if (isValidGenreId(genreId)) {
+            Pageable pageable = Util.getPageable(0, 50); // Default page size of 50
+            Page<Song> songPage = songRepository.findByGenreId(genreId, pageable);
+            if (songPage.hasContent()) {
+                return songPage.getContent();
+            }
+        } else {
+            throw new InvalidDataException("Invalid genre ID: " + genreId);
+        }
 
         return List.of();
+    }
+
+    @Override
+    public List<SongResponse> getLatestSongsByGenreOrderByReleaseDate(Long genreId) {
+        log.info("Song service : Fetching songs response by release date");
+        Util.validateNumber(genreId);
+        if (!isValidGenreId(genreId)) {
+            throw new InvalidDataException("Invalid genre ID: " + genreId);
+        }
+        Pageable pageable = Util.getPageable(0, 50);
+        Page<Song> songs = songRepository.findAllByGenreIdOrderByReleaseDateDesc(genreId, pageable);
+        if (songs.isEmpty()) {
+            log.warn("Song service : No songs response found by release date");
+            throw new ResourceNotFoundException("No songs found by release date");
+        }
+        return toSongPageResponse(songs);
+    }
+
+    @Override
+    public List<SongResponse> getSongsByGenreIdAndOrderByLikeCount(Long genreId) {
+        log.info("Song service : Fetching songs by genre ID: {} and ordering by like count", genreId);
+        Pageable pageable = Util.getPageable(0, 50);
+
+        Page<Song> song = songRepository.findAllByGenreIdOrderByLikeCountDesc(genreId, pageable);
+
+        if (!song.getContent().isEmpty()) {
+            log.info("Song service : Found {} songs by genre ID: {}", song.getContent().size(), genreId);
+            return toSongPageResponse(song);
+        }
+        throw new ResourceNotFoundException("No songs found by genre ID: " + genreId);
     }
 }

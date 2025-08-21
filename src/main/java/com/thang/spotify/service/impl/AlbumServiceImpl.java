@@ -1,11 +1,16 @@
 package com.thang.spotify.service.impl;
 
 import com.thang.spotify.common.mapper.AlbumMapper;
+import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.response.album.AlbumResponse;
+import com.thang.spotify.dto.response.album.SearchAlbumResponse;
+import com.thang.spotify.dto.response.song.SearchSongResponse;
 import com.thang.spotify.dto.response.song.SongResponse;
 import com.thang.spotify.entity.Album;
 import com.thang.spotify.entity.Genre;
 import com.thang.spotify.entity.Song;
+import com.thang.spotify.exception.InvalidDataException;
+import com.thang.spotify.exception.ResourceNotFoundException;
 import com.thang.spotify.repository.AlbumRepository;
 import com.thang.spotify.service.AlbumService;
 import com.thang.spotify.service.GenreService;
@@ -16,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -55,27 +61,19 @@ public class AlbumServiceImpl implements AlbumService {
     }
 
     @Override
-    public AlbumResponse getAlbumById(Long id) {
-        return null;
-    }
-
-    @Override
-    public List<Album> getAlbumsByGenre(Long genreId) {
-        log.info("Album service: loading albums by genre ID {}", genreId);
-        validator.validateGenreId(genreId);
-
-        Genre genre = genreService.getGenreById(genreId);
-        if (genre != null) {
-//            List<Album> albums = albumRepository.findByGenre(genre);
-//            if (!albums.isEmpty()) {
-//                return albums;
-//            } else {
-//                log.warn("No albums found for genre ID: {}", genreId);
-//            }
-        } else {
-            log.error("Genre not found with ID: {}", genreId);
+    public AlbumResponse getAlbumResponseById(Long id) {
+        Util.validateNumber(id);
+        log.info("Album service: loading album by ID {}", id);
+        if (id <= 0) {
+            log.error("Invalid album ID provided: {}", id);
+            throw new InvalidDataException("Invalid album ID provided.");
         }
-        return List.of();
+
+        Album album = albumRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Album not found with ID: " + id));
+        log.info("Album found: {}", album.getTitle());
+
+        return getAlbumResponse(album);
     }
 
     @Override
@@ -90,4 +88,42 @@ public class AlbumServiceImpl implements AlbumService {
 
         return List.of();
     }
+
+    @Override
+    public List<SearchAlbumResponse> searchByName(String albumName) {
+        if (Util.isNullOrBlank(albumName)) {
+            log.error("AlbumService: Empty album name provided for search");
+            return List.of();
+        }
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<Album> albums = albumRepository.findByTitleContainingIgnoreCase(albumName, pageable).getContent();
+        log.info("Album service : searching by name : {}", albumName);
+        if (!albums.isEmpty()) {
+            return albums.stream()
+                    .map(album -> {
+                        SearchAlbumResponse searchAlbumResponse = new SearchAlbumResponse();
+                        searchAlbumResponse.setType("album");
+                        searchAlbumResponse.setAlbum(getAlbumResponse(album));
+                        return searchAlbumResponse;
+                    })
+                    .toList();
+        }
+        log.warn("AlbumService: No albums found with name: {}", albumName);
+        return List.of();
+    }
+
+    private AlbumResponse getAlbumResponse(Album album) {
+        return AlbumResponse.builder()
+                .artistName(album.getArtist().getName())
+                .title(album.getTitle())
+                .id(album.getId())
+                .releaseDate(album.getReleaseDate())
+                .coverImageUrl(album.getCoverImageUrl())
+                .totalTracks(album.getTotalTracks())
+                .description(album.getDescription())
+                .build();
+    }
+
 }
