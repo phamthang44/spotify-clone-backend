@@ -318,3 +318,37 @@ INSERT INTO public.song (title, artist_id, album_id, duration, genre_id, release
 
 
 
+
+--DROP TABLE public.refresh_tokens;
+
+CREATE TABLE public.refresh_tokens (
+                                id BIGSERIAL PRIMARY KEY,
+                                user_id BIGINT NOT NULL REFERENCES public.tbl_user(id) ON DELETE CASCADE,
+                                token_hash VARCHAR(255) NOT NULL,
+                                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                                expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
+                                revoked BOOLEAN DEFAULT FALSE,
+                                UNIQUE(user_id, token_hash)
+);
+
+CREATE INDEX idx_refresh_tokens_token ON public.refresh_tokens(token_hash);
+
+ALTER TABLE public.tbl_user ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'LOCAL';
+ALTER TABLE public.tbl_user ADD COLUMN provider_id VARCHAR(255);
+
+CREATE TABLE public.user_asset (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES public.tbl_user(id) ON DELETE SET NULL,
+    asset_type VARCHAR(50) NOT NULL,
+    url TEXT NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE public.verification_token (
+                                    id BIGSERIAL PRIMARY KEY,
+                                    user_id BIGINT NOT NULL REFERENCES tbl_user(id) ON DELETE CASCADE,
+                                    token VARCHAR(255) NOT NULL UNIQUE,
+                                    expiry_date TIMESTAMP NOT NULL,
+                                    created_at TIMESTAMP DEFAULT NOW()
+);

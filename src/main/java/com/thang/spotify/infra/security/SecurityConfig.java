@@ -37,6 +37,7 @@ public class SecurityConfig {
     public static final String[] PUBLIC_LIST = {
             "/api/v1/users/login",
             "/api/v1/users/register",
+            "/api/v1/users/refresh"
     };
 
     public static final String[] WHITE_LIST = {
@@ -73,8 +74,7 @@ public class SecurityConfig {
                     // Public APIs
                     auth.requestMatchers(PUBLIC_LIST).permitAll();
                     auth.requestMatchers(WHITE_LIST).permitAll();
-                    auth.requestMatchers(HttpMethod.GET, "/error").permitAll();
-                    auth.requestMatchers(HttpMethod.GET, "/api/v1/products").hasAnyRole("CUSTOMER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/users/logout").permitAll();
                     auth.anyRequest().authenticated();
                     }
                 )

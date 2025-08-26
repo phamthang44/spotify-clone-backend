@@ -89,7 +89,10 @@ public class JwtTokenService {
         }
 
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parse(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
             return true;
         } catch (MalformedJwtException
                  | ExpiredJwtException

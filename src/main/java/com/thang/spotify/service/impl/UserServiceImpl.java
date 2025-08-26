@@ -1,24 +1,25 @@
 package com.thang.spotify.service.impl;
 
-import com.thang.spotify.common.enums.ErrorCode;
-import com.thang.spotify.common.enums.Gender;
-import com.thang.spotify.common.enums.UserStatus;
+import com.thang.spotify.common.enums.*;
 import com.thang.spotify.common.mapper.UserMapper;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
 import com.thang.spotify.entity.Role;
 import com.thang.spotify.entity.User;
+import com.thang.spotify.entity.VerificationToken;
 import com.thang.spotify.exception.*;
 //import com.thang.spotify.infra.email.EmailService;
+import com.thang.spotify.infra.email.EmailService;
 import com.thang.spotify.repository.RoleRepository;
 import com.thang.spotify.repository.UserRepository;
 import com.thang.spotify.service.UserService;
+import com.thang.spotify.service.VerificationTokenService;
 import com.thang.spotify.service.validator.UserValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.thang.spotify.common.enums.UserType;
+
 import java.time.LocalDate;
 
 @Service
@@ -31,7 +32,8 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final UserValidator userValidator;
     private final UserMapper userMapper;
-//    private final EmailService emailService;
+    private final EmailService emailService;
+    private final VerificationTokenService verificationTokenService;
 
     @Transactional
     @Override
@@ -71,15 +73,19 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toUser(registerRequestDTO);
         user.setPassword(encodedPassword);
         user.setRole(role);
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(UserStatus.UNVERIFIED);
         user.setGender(gender);
         user.setDateOfBirth(dateOfBirth);
+        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setProviderId(null);
+        VerificationToken token = verificationTokenService.createVerificationToken(user);
 
         Long userId = userRepository.save(user).getId();
         if (userId != null) {
             log.info("User registered successfully with ID: {}", userId);
             try {
-//                emailService.sendEmailRegistrationHtml(user.getEmail(), user.getDisplayName());
+                String link = "http://localhost:3000/verify?token=" + token.getToken();
+                emailService.sendEmailRegistrationHtml(user.getEmail(), user.getDisplayName(), link);
                 log.info("Registration email sent to {}", user.getEmail());
             } catch (Exception e) {
                 log.error("Failed to send registration email to {}", user.getEmail(), e);
@@ -92,4 +98,12 @@ public class UserServiceImpl implements UserService {
         return userId;
     }
 
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        User user = verificationTokenService.validateVerificationToken(token);
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+        verificationTokenService.deleteToken(token);
+    }
 }

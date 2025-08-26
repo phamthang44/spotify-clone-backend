@@ -31,7 +31,8 @@ public enum ErrorCode {
     AUTHENTICATION_SERVICE_ERROR("401", "Authentication service error, please try again later"),
     SERVICE_UNAVAILABLE("503", "Service temporarily unavailable, please try again later"),
     PAYMENT_ERROR("500", "Payment processing error: %s"),
-    OUT_OF_STOCK("409", "%s");
+    OUT_OF_STOCK("409", "%s"),
+    ALREADY_VERIFIED("409", "%s");
 
     private final String code;
     private final String messageTemplate;

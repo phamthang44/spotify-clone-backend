@@ -1,5 +1,6 @@
 package com.thang.spotify.entity;
 
+import com.thang.spotify.common.enums.AuthProvider;
 import com.thang.spotify.common.enums.Gender;
 import com.thang.spotify.common.enums.UserStatus;
 import jakarta.persistence.*;
@@ -47,9 +48,6 @@ public class User extends BaseEntity {
     @JoinColumn(nullable = false, name = "role_id")
     private Role role;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Playlist> playlists = new ArrayList<>();
 
@@ -60,5 +58,12 @@ public class User extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "song_id")
     )
     private Set<Song> likedSongs = new HashSet<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "auth_provider")
+    private AuthProvider authProvider;
+
+    @Column(name = "provider_id")
+    private String providerId;
 
 }

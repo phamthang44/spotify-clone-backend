@@ -10,5 +10,9 @@ public enum UserStatus {
     @JsonProperty("banned")
     BANNED,
     @JsonProperty("none")
-    NONE
+    NONE,
+    @JsonProperty("incomplete")
+    INCOMPLETE,
+    @JsonProperty("unverified")
+    UNVERIFIED
 }

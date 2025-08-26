@@ -1,5 +1,8 @@
 package com.thang.spotify.infra.security;
 
+import com.thang.spotify.common.enums.ErrorCode;
+import com.thang.spotify.exception.TokenExpiredException;
+import com.thang.spotify.exception.TokenNotFoundException;
 import com.thang.spotify.exception.UnauthorizedException;
 import com.thang.spotify.service.impl.security.JwtTokenService;
 import com.thang.spotify.service.impl.security.UserDetailsServiceImpl;
@@ -7,6 +10,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 @RequiredArgsConstructor
@@ -42,27 +47,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-
-        token = authHeader.substring(7); // Remove "Bearer "
+        token = authHeader.substring(7);
         try {
             username = jwtTokenService.extractUsername(token);
         } catch (ExpiredJwtException ex) {
             log.warn("JWT expired: {}", ex.getMessage());
-            throw new UnauthorizedException("JWT expired");
+            throw new TokenExpiredException(ErrorCode.INVALID_TOKEN, "JWT Token expired");
         } catch (JwtException | IllegalArgumentException ex) {
             log.warn("Invalid JWT: {}", ex.getMessage());
-            throw new UnauthorizedException("Invalid JWT");
+            throw new TokenNotFoundException(ErrorCode.INVALID_TOKEN, "Invalid JWT");
         }
-
+        log.info("Validate JWT username: {}", username);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
             if (jwtTokenService.isValid(token, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+        } else {
+            SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":false,\"message\":\"Token is invalid or expired\"}");
         }
 
         filterChain.doFilter(request, response);
