@@ -46,77 +46,131 @@ public class GoogleOAuth2Controller {
 
     @GetMapping("/google/callback")
     public void handleGoogleCallback(@RequestParam("code") String code, HttpServletResponse response) throws IOException {
-        GoogleUserInfo userInfo = googleOAuth2Service.getUserInfoFromCode(code); //chỗ này gây lỗi vì lí do là code đã dùng rồi
-        // cần fix here
+        GoogleUserInfo oAuth2UserInfo = googleOAuth2Service.processGoogleOAuth2Code(code);
+        User existingUser = userService.findByEmail(oAuth2UserInfo.getEmail());
 
-        User existingUser = userService.findByEmail(userInfo.getEmail());
-        String script;
-        if (existingUser != null) {
-            if (existingUser.getStatus().equals(UserStatus.INCOMPLETE)) {
-                OAuth2Response oAuth2Response = OAuth2Response.builder()
-                        .email(userInfo.getEmail())
-                        .name(userInfo.getName())
-                        .isExistingUser(false)
-                        .status(UserStatus.INCOMPLETE.toString())
-                        .requiredFields(List.of("displayName", "gender", "dateOfBirth"))
-                        .build();
-                ResponseData<OAuth2Response> responseData = new ResponseData<>(
-                        HttpStatus.OK.value(), "User found, but additional info required", oAuth2Response
-                );
-                String json = new ObjectMapper().writeValueAsString(responseData);
-                log.info("OAuth2 incomplete user");
-                script = "<script>" +
-                        "window.opener.postMessage(" + json + ", 'http://localhost:3000/signup');" +
-                        "window.close();" +
-                        "</script>";
-
-                response.setContentType("text/html");
-                response.getWriter().write(script);
-            }
-            SecurityUserDetails userDetails = SecurityUserDetails.build(existingUser);
-            Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities()
-            );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            String jwt = jwtTokenService.generateAccessToken(userDetails);
-
-            LoginResponse loginResponse = new LoginResponse(jwt, existingUser.getStatus());
-            ResponseData<LoginResponse> responseData = new ResponseData<>(
-                    HttpStatus.OK.value(), "Login successful", loginResponse
-            );
-
-            String json = new ObjectMapper().writeValueAsString(responseData);
-            log.info("OAuth2 login successful for user: {}", existingUser.getEmail());
-            script = "<script>" +
-                    "window.opener.postMessage(" + json + ", 'http://localhost:3000');" +
-                    "window.close();" +
-                    "</script>";
-
-            response.setContentType("text/html");
-            response.getWriter().write(script);
-        } else {
-            googleOAuth2Service.processGoogleOAuth2Code(code);
-
+        if (existingUser == null) {
+            // User does not exist, proceed with signup flow
             OAuth2Response oAuth2Response = OAuth2Response.builder()
-                    .email(userInfo.getEmail())
-                    .name(userInfo.getName())
+                    .email(oAuth2UserInfo.getEmail())
+                    .name(oAuth2UserInfo.getName())
                     .isExistingUser(false)
-                    .status("INCOMPLETE")
+                    .status(UserStatus.INCOMPLETE.toString())
                     .requiredFields(List.of("displayName", "gender", "dateOfBirth"))
                     .build();
-            ResponseData<OAuth2Response> responseData = new ResponseData<>(
-                    HttpStatus.OK.value(), "User not found, additional info required", oAuth2Response
-            );
+            ResponseData<OAuth2Response> responseData = new ResponseData<>(HttpStatus.OK.value(), "User not found, additional info required", oAuth2Response);
             String json = new ObjectMapper().writeValueAsString(responseData);
             log.info("OAuth2 signup user");
-            script = "<script>" +
+            String script = "<script>" +
                     "window.opener.postMessage(" + json + ", 'http://localhost:3000/signup');" +
                     "window.close();" +
                     "</script>";
+            response.setContentType("text/html");
+            response.getWriter().write(script);
+        } else {
+            if (existingUser.getStatus().equals(UserStatus.INCOMPLETE)) {
+                // User exists but has incomplete profile
+                OAuth2Response oAuth2Response = OAuth2Response.builder()
+                        .email(oAuth2UserInfo.getEmail())
+                        .name(oAuth2UserInfo.getName())
+                        .isExistingUser(true)
+                        .status(UserStatus.INCOMPLETE.toString())
+                        .requiredFields(List.of("displayName", "gender", "dateOfBirth"))
+                        .build();
+                ResponseData<OAuth2Response> responseData = new ResponseData<>(HttpStatus.OK.value(), "User found, but additional info required", oAuth2Response);
+                String json = new ObjectMapper().writeValueAsString(responseData);
+                log.info("OAuth2 incomplete user");
+                String script = "<script>" +
+                        "window.opener.postMessage(" + json + ", 'http://localhost:3000/signup');" +
+                        "window.close();" +
+                        "</script>";
+                response.setContentType("text/html");
+                response.getWriter().write(script);
+            }
+        }
 
+        if (existingUser != null && existingUser.getStatus().equals(UserStatus.ACTIVE)) {
+            // User exists and has complete profile, proceed with login
+            SecurityUserDetails userDetails = SecurityUserDetails.build(existingUser);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            String jwt = jwtTokenService.generateAccessToken(userDetails);
+            LoginResponse loginResponse = new LoginResponse(jwt, existingUser.getStatus());
+            ResponseData<LoginResponse> responseData = new ResponseData<>(HttpStatus.OK.value(), "Login successful", loginResponse);
+            String json = new ObjectMapper().writeValueAsString(responseData);
+
+            log.info("OAuth2 login successful for user: {}", existingUser.getEmail());
+
+            String script = "<script>" +
+                    "window.opener.postMessage(" + json + ", 'http://localhost:3000');" +
+                    "window.close();" +
+                    "</script>";
             response.setContentType("text/html");
             response.getWriter().write(script);
         }
     }
 }
+
+//        String script;
+//
+//        if (existingUser != null) {
+//            if (existingUser.getStatus().equals(UserStatus.INCOMPLETE)) {
+//                // Người dùng đã tồn tại nhưng chưa hoàn tất thông tin
+//                OAuth2Response oAuth2Response = OAuth2Response.builder()
+//                        .email(email)
+//                        .name((String) userInfo.get("name"))
+//                        .isExistingUser(true)
+//                        .status(UserStatus.INCOMPLETE.toString())
+//                        .requiredFields(List.of("displayName", "gender", "dateOfBirth"))
+//                        .build();
+//
+//                ResponseData<OAuth2Response> responseData = new ResponseData<>(HttpStatus.OK.value(), "User found, but additional info required", oAuth2Response);
+//                String json = new ObjectMapper().writeValueAsString(responseData);
+//                log.info("OAuth2 incomplete user");
+//
+//                script = "<script>" +
+//                        "window.opener.postMessage(" + json + ", 'http://localhost:3000/signup');" +
+//                        "window.close();" +
+//                        "</script>";
+//            } else {
+//                // Nếu người dùng đã hoàn tất thông tin, thực hiện đăng nhập
+//                SecurityUserDetails userDetails = SecurityUserDetails.build(existingUser);
+//                Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+//                SecurityContextHolder.getContext().setAuthentication(authentication);
+//
+//                String jwt = jwtTokenService.generateAccessToken(userDetails);
+//                LoginResponse loginResponse = new LoginResponse(jwt, existingUser.getStatus());
+//                ResponseData<LoginResponse> responseData = new ResponseData<>(HttpStatus.OK.value(), "Login successful", loginResponse);
+//                String json = new ObjectMapper().writeValueAsString(responseData);
+//
+//                log.info("OAuth2 login successful for user: {}", existingUser.getEmail());
+//
+//                script = "<script>" +
+//                        "window.opener.postMessage(" + json + ", 'http://localhost:3000');" +
+//                        "window.close();" +
+//                        "</script>";
+//            }
+//        } else {
+//            //tạo mới user here
+//            googleOAuth2Service.processGoogleOAuth2Code(code); // Đảm bảo chỉ gọi một lần
+//
+//            OAuth2Response oAuth2Response = OAuth2Response.builder()
+//                    .email(email)
+//                    .name((String) userInfo.get("name"))
+//                    .isExistingUser(false)
+//                    .status("INCOMPLETE")
+//                    .requiredFields(List.of("displayName", "gender", "dateOfBirth"))
+//                    .build();
+//
+//            ResponseData<OAuth2Response> responseData = new ResponseData<>(HttpStatus.OK.value(), "User not found, additional info required", oAuth2Response);
+//            String json = new ObjectMapper().writeValueAsString(responseData);
+//            log.info("OAuth2 signup user");
+//
+//            script = "<script>" +
+//                    "window.opener.postMessage(" + json + ", 'http://localhost:3000/signup');" +
+//                    "window.close();" +
+//                    "</script>";
+//        }
+//        response.setContentType("text/html");
+//        response.getWriter().write(script);

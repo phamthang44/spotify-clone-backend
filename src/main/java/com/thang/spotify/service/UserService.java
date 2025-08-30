@@ -12,5 +12,6 @@ public interface UserService {
     User findByEmail(String email);
     long completeOAuth2Signup(User user, RegisterRequest registerRequestDTO);
     void resendVerificationEmail(String email);
+    User getUserById(Long id);
 
 }

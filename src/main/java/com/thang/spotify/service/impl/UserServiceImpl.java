@@ -2,6 +2,7 @@ package com.thang.spotify.service.impl;
 
 import com.thang.spotify.common.enums.*;
 import com.thang.spotify.common.mapper.UserMapper;
+import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
 import com.thang.spotify.dto.response.auth.OAuth2Response;
 import com.thang.spotify.entity.Role;
@@ -157,5 +158,12 @@ public class UserServiceImpl implements UserService {
             log.error("Failed to resend verification email to {}", user.getEmail(), e);
             throw new CustomMessagingException(ErrorCode.INTERNAL_ERROR, "Failed to resend verification email");
         }
+    }
+
+    @Override
+    public User getUserById(Long id) {
+        Util.validateNumber(id);
+        Optional<User> userOpt = userRepository.findById(id);
+        return userOpt.orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
 }

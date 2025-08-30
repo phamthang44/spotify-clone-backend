@@ -48,7 +48,8 @@ public class SecurityConfig {
             "/api/v1/auth/verify-email",
             "/api/v1/auth/resend-verification",
             "/api/v1/auth/email-from-cookie",
-            "/api/v1/auth/users/status"
+            "/api/v1/auth/users/status",
+            "/api/v1/auth/complete-signup"
     };
 
     public static final String[] WHITE_LIST = {
