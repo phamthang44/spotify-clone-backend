@@ -33,7 +33,7 @@ public class UserValidator {
         }
         if (Util.isInvalidPasswordFormat(password)) {
             log.error("Invalid password format: {}", password);
-            throw new InvalidDataException("Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character");
+            throw new InvalidDataException("Password must be at least 10 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.");
         }
     }
 

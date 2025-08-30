@@ -1,11 +1,13 @@
 package com.thang.spotify.controller;
 
 import com.thang.spotify.common.enums.UserStatus;
+import com.thang.spotify.dto.request.auth.EmailRequest;
 import com.thang.spotify.dto.request.auth.LoginRequest;
 import com.thang.spotify.dto.request.auth.RefreshTokenRequest;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
 import com.thang.spotify.dto.response.auth.LoginResponse;
 import com.thang.spotify.dto.response.ResponseData;
+import com.thang.spotify.dto.response.auth.OAuth2Response;
 import com.thang.spotify.entity.RefreshToken;
 import com.thang.spotify.entity.User;
 import com.thang.spotify.infra.security.SecurityUserDetails;
@@ -21,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -31,16 +34,23 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
@@ -52,28 +62,24 @@ public class AuthController {
     private final UserDetailsServiceImpl userDetailsServiceImpl;
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final ClientRegistrationRepository clientRegistrationRepository;
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Operation(method= "POST", summary="Login account", description="This API allows you to check login response")
     @PostMapping("/login")
-    public ResponseEntity<ResponseData<?>> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-
+    public ResponseEntity<ResponseData<?>> login(@Valid @RequestBody LoginRequest requestLogin, HttpServletRequest request, HttpServletResponse response) {
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(requestLogin.getEmail(), requestLogin.getPassword())
         );
 
         SecurityUserDetails userDetails = (SecurityUserDetails) auth.getPrincipal();
+        User user = userDetails.getUser();
 
+        //3. Luôn tạo access token mới
         String accessToken = jwtTokenService.generateAccessToken(userDetails);
 
-        User user = userDetails.getUser();
-        UserStatus status = user.getStatus();
         String refreshToken = refreshTokenService.createOrUpdateRefreshToken(user);
 
-//        redisService.setValue(
-//                "refresh:" + userDetails.getUsername(),
-//                refreshToken.getToken(),
-//                7, TimeUnit.DAYS
-//        );
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(false) // Chỉ gửi cookie qua HTTPS
@@ -83,20 +89,20 @@ public class AuthController {
                 .build();
 
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        LoginResponse loginResponse = new LoginResponse(accessToken, status);
+        LoginResponse loginResponse = new LoginResponse(accessToken, user.getStatus());
 
         return ResponseEntity.status(200).body(new ResponseData<>(200, "Login successfully", loginResponse));
     }
 
     @Operation(method= "POST", summary="Add user", description="This API allows you to add a new user")
     @PostMapping(value = "/register")
-    public ResponseData<?> register(@Valid @RequestBody RegisterRequest user) {
+    public ResponseEntity<ResponseData<?>> register(@Valid @RequestBody RegisterRequest user) {
 
         log.info("Request add user = {}", user.getEmail());
         long userId = userService.registerUser(user);
 
-        return new ResponseData<>(201, "User registered successfully", userId);
-
+        return ResponseEntity.status(201)
+                .body(new ResponseData<>(201, "User registered successfully", userId));
     }
 
     @PostMapping("/logout")
@@ -131,6 +137,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<ResponseData<?>> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        // --- 1. Lấy refresh token từ cookie ---
         String rawRefreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
                 .filter(c -> "refresh_token".equals(c.getName()))
                 .findFirst()
@@ -138,21 +145,38 @@ public class AuthController {
                 .orElse(null);
 
         if (rawRefreshToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ResponseData<>(401, "No refresh token provided", null));
+            return unauthorized("No refresh token provided");
         }
 
-        RefreshToken tokenEntity = refreshTokenService.validateRefreshToken(rawRefreshToken); // service tìm hash và verify
-        if (tokenEntity == null || tokenEntity.isRevoked() || tokenEntity.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ResponseData<>(401, "Invalid or expired refresh token", null));
+        // --- 2. Validate refresh token ---
+        RefreshToken tokenEntity = refreshTokenService.validateRefreshToken(rawRefreshToken);
+        if (tokenEntity == null || tokenEntity.isRevoked()) {
+            return unauthorized("Invalid or revoked refresh token");
         }
+
         User user = tokenEntity.getUser();
         UserStatus status = user.getStatus();
-        SecurityUserDetails userDetails = (SecurityUserDetails) userDetailsServiceImpl.loadUserByUsername(user.getEmail());
 
+        // --- 3. Check user status ---
+        if (status.equals(UserStatus.UNVERIFIED)) {
+            return forbidden("Email not verified. Please verify your email: " + user.getEmail());
+        }
+        if (!status.equals(UserStatus.ACTIVE) && !status.equals(UserStatus.INCOMPLETE)) {
+            return forbidden("User account is not active");
+        }
+
+        // --- 4. Generate new access token ---
+        SecurityUserDetails userDetails =
+                (SecurityUserDetails) userDetailsServiceImpl.loadUserByUsername(user.getEmail());
         String newAccessToken = jwtTokenService.generateAccessToken(userDetails);
 
+        // --- 5. Nếu refresh token còn hạn thì dùng lại ---
+        if (tokenEntity.getExpiryDate().isAfter(LocalDateTime.now())) {
+            log.info("Refresh token is still valid for user: {}", user.getEmail());
+            return ok("Token refreshed successfully", new LoginResponse(newAccessToken, status));
+        }
+
+        // --- 6. Nếu hết hạn thì rotate refresh token ---
         String newRefreshToken = refreshTokenService.createOrUpdateRefreshToken(user);
         ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
                 .httpOnly(true)
@@ -163,9 +187,7 @@ public class AuthController {
                 .build();
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return ResponseEntity.ok(
-                new ResponseData<>(200, "Token refreshed successfully", new LoginResponse(newAccessToken, status))
-        );
+        return ok("Token refreshed successfully", new LoginResponse(newAccessToken, status));
     }
 
     public void addRefreshTokenToCookie(String refreshToken, HttpServletResponse response) {
@@ -177,10 +199,96 @@ public class AuthController {
         response.addCookie(cookie);
     }
 
+    @GetMapping("/email-from-cookie")
+    public ResponseEntity<ResponseData<?>> getEmailFromCookie(HttpServletRequest request) {
+        String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
+                .filter(c -> "refresh_token".equals(c.getName()))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ResponseData<>(404, "Refresh token not found", null));
+        }
+
+        RefreshToken token = refreshTokenService.validateRefreshToken(refreshToken);
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ResponseData<>(401, "Invalid or expired refresh token", null));
+        }
+        String email = token.getUser().getEmail();
+        return ResponseEntity.ok(new ResponseData<>(200, "Email retrieved successfully", email));
+    }
+
+    @GetMapping("/users/status")
+    public ResponseEntity<ResponseData<?>> getUserStatus(HttpServletRequest request) {
+        String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
+                .filter(c -> "refresh_token".equals(c.getName()))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ResponseData<>(404, "Refresh token not found", null));
+        }
+
+        RefreshToken token = refreshTokenService.validateRefreshToken(refreshToken);
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ResponseData<>(401, "Invalid or expired refresh token", null));
+        }
+
+        UserStatus status = token.getUser().getStatus();
+        if (status.equals(UserStatus.UNVERIFIED)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ResponseData<>(403, "Email not verified. Please verify your email: ", token.getUser().getEmail()));
+        } else if (status.equals(UserStatus.ACTIVE)) {
+            return ResponseEntity.ok(new ResponseData<>(200, "User status is ACTIVE", status) );
+        }
+        else {
+            return ResponseEntity.ok(new ResponseData<>(200, "User status retrieved successfully", status) );
+        }
+    }
+
     @GetMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestParam String token) {
         userService.verifyEmail(token);
         return ResponseEntity.ok("Email verified successfully!");
+    }
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ResponseData<?>> resendVerificationEmail(@RequestBody EmailRequest dto) {
+        log.info("Resend verification email to {}", dto.getEmail());
+        userService.resendVerificationEmail(dto.getEmail());
+        return ResponseEntity.ok(new ResponseData<>(200, "Verification email resent successfully", null));
+    }
+
+    @PostMapping("/complete-signup")
+    public ResponseEntity<ResponseData<?>> completeSignup(@Valid @RequestBody RegisterRequest registerRequest) {
+        User user = userService.findByEmail(registerRequest.getEmail());
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found with email: " + registerRequest.getEmail());
+        } if (!user.getStatus().equals(UserStatus.INCOMPLETE)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseData<>(400, "User status is not INCOMPLETE", null));
+        }
+        long userId = userService.completeOAuth2Signup(user, registerRequest);
+        return ResponseEntity.ok(new ResponseData<>(200, "Signup completed successfully", userId));
+    }
+
+    private ResponseEntity<ResponseData<?>> unauthorized(String message) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ResponseData<>(401, message, null));
+    }
+
+    private ResponseEntity<ResponseData<?>> forbidden(String message) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ResponseData<>(403, message, null));
+    }
+
+    private ResponseEntity<ResponseData<?>> ok(String message, Object data) {
+        return ResponseEntity.ok(new ResponseData<>(200, message, data));
     }
 
 }

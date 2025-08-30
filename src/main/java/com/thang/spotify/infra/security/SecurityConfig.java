@@ -16,7 +16,13 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
@@ -35,9 +41,14 @@ public class SecurityConfig {
     }
 
     public static final String[] PUBLIC_LIST = {
-            "/api/v1/users/login",
-            "/api/v1/users/register",
-            "/api/v1/users/refresh"
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/oauth2/**",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-verification",
+            "/api/v1/auth/email-from-cookie",
+            "/api/v1/auth/users/status"
     };
 
     public static final String[] WHITE_LIST = {
@@ -74,12 +85,21 @@ public class SecurityConfig {
                     // Public APIs
                     auth.requestMatchers(PUBLIC_LIST).permitAll();
                     auth.requestMatchers(WHITE_LIST).permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/api/v1/users/logout").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll();
                     auth.anyRequest().authenticated();
                     }
                 )
+//                .oauth2Login(oauth2 -> oauth2
+//                        .authorizationEndpoint(auth -> auth.baseUri("/api/v1/auth/google")) // nút login redirect tới đây
+//                        .redirectionEndpoint(redir -> redir.baseUri("/api/v1/auth/google/callback")) // callback
+//                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService())) // lấy info user
+//                        .successHandler(oAuth2AuthenticationSuccessHandler())
+//                        .failureHandler(oAuth2AuthenticationFailureHandler())
+//                )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+
+
 }

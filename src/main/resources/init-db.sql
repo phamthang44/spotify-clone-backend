@@ -32,7 +32,6 @@ CREATE TABLE public.tbl_user (
                                  "password" varchar(255) NOT NULL,
                                  status public."e_user_status" NOT NULL,
                                  role_id INT NOT NULL REFERENCES public.role(id),
-                                 avatar_url varchar(255) NULL,
                                  created_at timestamp(6) DEFAULT NOW(),
                                  updated_at timestamp(6) DEFAULT NOW(),
                                  CONSTRAINT tbl_user_pkey PRIMARY KEY (id)

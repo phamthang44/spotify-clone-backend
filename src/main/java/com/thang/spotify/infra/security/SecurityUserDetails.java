@@ -43,6 +43,7 @@ public class SecurityUserDetails implements UserDetails {
                 .id(user.getId())
                 .email(user.getEmail())
                 .password(user.getPassword())
+                .user(user)
                 .build();
     }
 

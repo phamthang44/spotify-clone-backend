@@ -21,14 +21,14 @@ import java.util.Set;
 @AttributeOverride(name = "id", column = @Column(name = "id"))
 public class User extends BaseEntity {
 
-    @Column(unique = true, nullable = false, name = "display_name")
+    @Column(name = "display_name")
     private String displayName;
 
-    @Column(nullable = false, name = "date_of_birth")
+    @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, name = "gender", columnDefinition = "e_gender DEFAULT 'OTHER'")
+    @Column(nullable = true, name = "gender", columnDefinition = "e_gender DEFAULT 'OTHER'")
     private Gender gender;
 
     @Column(name = "phone")
@@ -37,7 +37,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, name = "email", unique = true)
     private String email;
 
-    @Column(nullable = false, name = "password")
+    @Column(name = "password")
     private String password;
 
     @Enumerated(EnumType.STRING)

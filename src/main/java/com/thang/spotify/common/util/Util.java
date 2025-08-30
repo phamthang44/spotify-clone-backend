@@ -36,7 +36,7 @@ public class Util {
     }
 
     public static boolean isInvalidPasswordFormat(String password) {
-        String passwordRegex = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$";
+        String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{10,}$";
         return !password.matches(passwordRegex);
     }
 

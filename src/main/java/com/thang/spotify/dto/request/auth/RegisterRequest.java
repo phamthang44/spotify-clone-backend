@@ -37,9 +37,9 @@ public class RegisterRequest {
             example = "abc12345678!@#"
     )
     @Pattern(
-            regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$",
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{10,}$",
             message =
-                    "The password must be at least 8 characters, including letters, numbers, and special characters."
+                    "Password must be at least 10 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character."
     )
     private String password;
 

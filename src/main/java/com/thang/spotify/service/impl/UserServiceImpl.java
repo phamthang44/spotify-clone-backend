@@ -3,6 +3,7 @@ package com.thang.spotify.service.impl;
 import com.thang.spotify.common.enums.*;
 import com.thang.spotify.common.mapper.UserMapper;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
+import com.thang.spotify.dto.response.auth.OAuth2Response;
 import com.thang.spotify.entity.Role;
 import com.thang.spotify.entity.User;
 import com.thang.spotify.entity.VerificationToken;
@@ -18,9 +19,15 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -78,9 +85,9 @@ public class UserServiceImpl implements UserService {
         user.setDateOfBirth(dateOfBirth);
         user.setAuthProvider(AuthProvider.LOCAL);
         user.setProviderId(null);
+        Long userId = userRepository.save(user).getId();
         VerificationToken token = verificationTokenService.createVerificationToken(user);
 
-        Long userId = userRepository.save(user).getId();
         if (userId != null) {
             log.info("User registered successfully with ID: {}", userId);
             try {
@@ -105,5 +112,50 @@ public class UserServiceImpl implements UserService {
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
         verificationTokenService.deleteToken(token);
+    }
+
+    @Override
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public long completeOAuth2Signup(User user, RegisterRequest registerRequestDTO) {
+        String email = registerRequestDTO.getEmail().trim();
+        long completedUserId = 0;
+        if (user.getStatus().equals(UserStatus.INCOMPLETE)) {
+            log.error("User status is not INCOMPLETE");
+            user.setPassword(passwordEncoder.encode(registerRequestDTO.getPassword()));
+            user.setDisplayName(registerRequestDTO.getDisplayName());
+            user.setGender(registerRequestDTO.getGender() != null ? registerRequestDTO.getGender() : Gender.OTHER);
+            user.setDateOfBirth(registerRequestDTO.getDateOfBirth());
+            user.setStatus(UserStatus.ACTIVE);
+            completedUserId = userRepository.save(user).getId();
+        }
+
+        return completedUserId;
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        String emailTrimmed = email.trim();
+        userValidator.validateEmail(emailTrimmed);
+
+        User user = userRepository.findByEmail(emailTrimmed)
+                .orElseThrow(() -> new ResourceNotFoundException("User with email " + emailTrimmed + " not found"));
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            throw new BadRequestException("Email is already verified");
+        }
+        VerificationToken token = verificationTokenService.createVerificationToken(user);
+        try {
+            String link = "http://localhost:3000/verify?token=" + token.getToken();
+            emailService.sendEmailRegistrationHtml(user.getEmail(), user.getDisplayName(), link);
+            log.info("Verification email resent to {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to resend verification email to {}", user.getEmail(), e);
+            throw new CustomMessagingException(ErrorCode.INTERNAL_ERROR, "Failed to resend verification email");
+        }
     }
 }

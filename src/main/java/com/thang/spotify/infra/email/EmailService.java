@@ -349,7 +349,6 @@ public class EmailService {
         String safeHtml = htmlContentTest.replace("%", "%%").replace("%%s", "%s");
         String htmlContentFormatted = String.format(safeHtml, username, linkToken);
         helper.setText(htmlContentFormatted, true);
-
         mailSender.send(message);
     }
 

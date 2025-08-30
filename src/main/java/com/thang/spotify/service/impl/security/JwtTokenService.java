@@ -1,5 +1,6 @@
 package com.thang.spotify.service.impl.security;
 
+import com.thang.spotify.entity.User;
 import com.thang.spotify.service.RedisService;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.jsonwebtoken.*;
@@ -36,6 +37,16 @@ public class JwtTokenService {
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+    public String generateVerificationToken(User user) {
+        return Jwts.builder()
+                .setSubject(user.getEmail())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24)) // 24 hours
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
 
     public String generateRefreshToken(UserDetails user) {
         return Jwts.builder()

@@ -18,7 +18,7 @@ public enum ErrorCode {
     VALIDATION_ERROR("400", "Validation error: %s"),
     CONFLICT("409", "%s already exists"),
     FORBIDDEN("403", "Access to %s is forbidden"),
-    INVALID_TOKEN("401", "Token is invalid or expired"),
+    INVALID_TOKEN("401", "Token is invalid or expired: %s"),
     RATE_LIMIT_EXCEEDED("429", "Rate limit exceeded for %s"),
     INTERNAL_ERROR("500", "Error happened while processing your request, contact admin for more info"),
     INVALID_ARGUMENT("400", "Invalid argument: %s - %s"),

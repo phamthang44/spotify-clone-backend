@@ -1,4 +1,5 @@
 package com.thang.spotify.exception;
+import com.thang.spotify.common.enums.ErrorCode;
 import com.thang.spotify.dto.response.ResponseError;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -20,6 +21,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.util.Date;
 
 import static com.thang.spotify.common.enums.ErrorCode.BAD_CREDENTIAL_LOGIN;
+import static com.thang.spotify.common.enums.ErrorCode.INVALID_TOKEN;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -285,7 +287,65 @@ public class GlobalHandlerException {
         return errorResponse;
     }
 
+    @ExceptionHandler({VerificationTokenException.class})
+    @ResponseStatus(UNAUTHORIZED)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = {@Content(mediaType = APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    name = "401 Response",
+                                    summary = "Handle exception when the verification token is invalid or expired",
+                                    value = """
+                                            {
+                                              "timestamp": "2023-10-19T06:07:35.321+00:00",
+                                              "status": 401,
+                                              "path": "/api/v1/...",
+                                              "error": "Unauthorized",
+                                              "message": "Invalid or expired verification token"
+                                            }
+                                            """
+                            ))})
+    })
+    public ErrorResponse handleVerificationTokenException(VerificationTokenException e, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(UNAUTHORIZED.value());
+        errorResponse.setError(UNAUTHORIZED.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
 
+        return errorResponse;
+    }
+
+    @ExceptionHandler({TokenExpiredException.class, TokenNotFoundException.class})
+    @ResponseStatus(UNAUTHORIZED)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = {@Content(mediaType = APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    name = "401 Response",
+                                    summary = "Handle exception when the verification token is invalid or expired",
+                                    value = """
+                                            {
+                                              "timestamp": "2023-10-19T06:07:35.321+00:00",
+                                              "status": 401,
+                                              "path": "/api/v1/...",
+                                              "error": "Unauthorized",
+                                              "message": "Invalid or expired verification token"
+                                            }
+                                            """
+                            ))})
+    })
+    public ErrorResponse handleRefreshTokenException(Exception e, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(UNAUTHORIZED.value());
+        errorResponse.setError(UNAUTHORIZED.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
+
+        return errorResponse;
+    }
 
 
 }
