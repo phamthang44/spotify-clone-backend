@@ -7,6 +7,7 @@ import com.thang.spotify.dto.response.auth.LoginResponse;
 import com.thang.spotify.dto.response.auth.OAuth2Response;
 import com.thang.spotify.entity.User;
 import com.thang.spotify.infra.security.SecurityUserDetails;
+import com.thang.spotify.service.RefreshTokenService;
 import com.thang.spotify.service.UserService;
 import com.thang.spotify.service.impl.security.JwtTokenService;
 import com.thang.spotify.service.oauth2.GoogleOAuth2Service;
@@ -14,7 +15,9 @@ import com.thang.spotify.service.oauth2.GoogleUserInfo;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +41,7 @@ public class GoogleOAuth2Controller {
     private final GoogleOAuth2Service googleOAuth2Service;
     private final UserService userService;
     private final JwtTokenService jwtTokenService;
+    private final RefreshTokenService refreshTokenService;
 
     @GetMapping("/google")
     public void redirectToGoogle(HttpServletResponse response) throws IOException {
@@ -98,6 +103,17 @@ public class GoogleOAuth2Controller {
             String jwt = jwtTokenService.generateAccessToken(userDetails);
             LoginResponse loginResponse = new LoginResponse(jwt, existingUser.getStatus());
             ResponseData<LoginResponse> responseData = new ResponseData<>(HttpStatus.OK.value(), "Login successful", loginResponse);
+            String newRefreshToken = refreshTokenService.createOrUpdateRefreshToken(existingUser);
+
+            ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/")
+                    .maxAge(Duration.ofDays(7))
+                    .sameSite("Strict")
+                    .build();
+            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
             String json = new ObjectMapper().writeValueAsString(responseData);
 
             log.info("OAuth2 login successful for user: {}", existingUser.getEmail());

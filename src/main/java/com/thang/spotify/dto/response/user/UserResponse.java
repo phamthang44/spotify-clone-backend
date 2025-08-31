@@ -12,7 +12,6 @@ import java.time.LocalDate;
 @Builder
 public class UserResponse implements Serializable {
 
-    private Long id;
     private String displayName;
     private String email;
     private LocalDate dateOfBirth;

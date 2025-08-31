@@ -5,14 +5,17 @@ import com.thang.spotify.common.mapper.UserMapper;
 import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
 import com.thang.spotify.dto.response.auth.OAuth2Response;
+import com.thang.spotify.dto.response.user.UserResponse;
 import com.thang.spotify.entity.Role;
 import com.thang.spotify.entity.User;
+import com.thang.spotify.entity.UserAsset;
 import com.thang.spotify.entity.VerificationToken;
 import com.thang.spotify.exception.*;
 //import com.thang.spotify.infra.email.EmailService;
 import com.thang.spotify.infra.email.EmailService;
 import com.thang.spotify.repository.RoleRepository;
 import com.thang.spotify.repository.UserRepository;
+import com.thang.spotify.service.UserAssetService;
 import com.thang.spotify.service.UserService;
 import com.thang.spotify.service.VerificationTokenService;
 import com.thang.spotify.service.validator.UserValidator;
@@ -42,6 +45,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final EmailService emailService;
     private final VerificationTokenService verificationTokenService;
+    private final UserAssetService userAssetService;
 
     @Transactional
     @Override
@@ -165,5 +169,25 @@ public class UserServiceImpl implements UserService {
         Util.validateNumber(id);
         Optional<User> userOpt = userRepository.findById(id);
         return userOpt.orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    }
+
+    @Override
+    public UserResponse getUserResponse(Long id) {
+        Util.validateNumber(id);
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        if (user != null) {
+            UserResponse response = userMapper.toUserResponse(user);
+            String userAvatarUrl = userAssetService.getAvatarUrl(user.getId(), UserAssetType.AVATAR);
+            if (Util.isNullOrBlank(userAvatarUrl)) {
+                userAvatarUrl = "";
+            }
+            response.setAvatarUrl(userAvatarUrl);
+            return response;
+        }
+
+        throw new ResourceNotFoundException("User not found with id: " + id);
     }
 }

@@ -39,7 +39,7 @@ public class SearchServiceImpl implements SearchService {
                         artistService.searchArtists(query)
                 )
                 .flatMap(List::stream)
-                .limit(10)
+                .limit(5)
                 .toList();
         return ResultsResponse.builder()
                 .total(mergedResults.size())

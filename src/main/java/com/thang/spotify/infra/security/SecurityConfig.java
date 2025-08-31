@@ -87,6 +87,7 @@ public class SecurityConfig {
                     auth.requestMatchers(PUBLIC_LIST).permitAll();
                     auth.requestMatchers(WHITE_LIST).permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("LISTENER", "ADMIN", "ARTIST");
                     auth.anyRequest().authenticated();
                     }
                 )
