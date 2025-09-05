@@ -4,14 +4,12 @@ import com.thang.spotify.common.enums.*;
 import com.thang.spotify.common.mapper.UserMapper;
 import com.thang.spotify.common.util.Util;
 import com.thang.spotify.dto.request.auth.RegisterRequest;
-import com.thang.spotify.dto.response.auth.OAuth2Response;
 import com.thang.spotify.dto.response.user.UserResponse;
 import com.thang.spotify.entity.Role;
 import com.thang.spotify.entity.User;
-import com.thang.spotify.entity.UserAsset;
 import com.thang.spotify.entity.VerificationToken;
 import com.thang.spotify.exception.*;
-//import com.thang.spotify.infra.email.EmailService;
+import com.thang.spotify.infra.configuration.AppProperties;
 import com.thang.spotify.infra.email.EmailService;
 import com.thang.spotify.repository.RoleRepository;
 import com.thang.spotify.repository.UserRepository;
@@ -23,15 +21,10 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+
 
 @Service
 @Slf4j
@@ -46,6 +39,7 @@ public class UserServiceImpl implements UserService {
     private final EmailService emailService;
     private final VerificationTokenService verificationTokenService;
     private final UserAssetService userAssetService;
+    private final AppProperties appProperties;
 
     @Transactional
     @Override
@@ -96,7 +90,7 @@ public class UserServiceImpl implements UserService {
         if (userId != null) {
             log.info("User registered successfully with ID: {}", userId);
             try {
-                String link = "http://localhost:3000/verify?token=" + token.getToken();
+                String link = appProperties.getFrontendUrl() + "/verify?token=" + token.getToken();
                 emailService.sendEmailRegistrationHtml(user.getEmail(), user.getDisplayName(), link);
                 log.info("Registration email sent to {}", user.getEmail());
             } catch (Exception e) {
@@ -129,7 +123,7 @@ public class UserServiceImpl implements UserService {
     public long completeOAuth2Signup(User user, RegisterRequest registerRequestDTO) {
         String email = registerRequestDTO.getEmail().trim();
         long completedUserId = 0;
-        if (user.getStatus().equals(UserStatus.INCOMPLETE)) {
+        if (user.getStatus() == UserStatus.INCOMPLETE) {
             log.error("User status is not INCOMPLETE");
             user.setPassword(passwordEncoder.encode(registerRequestDTO.getPassword()));
             user.setDisplayName(registerRequestDTO.getDisplayName());

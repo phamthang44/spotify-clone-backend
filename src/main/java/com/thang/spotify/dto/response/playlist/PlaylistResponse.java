@@ -18,6 +18,6 @@ public class PlaylistResponse implements Serializable {
     private String coverImageUrl;
     private String description;
     private String ownerName;
-    private List<SongResponse> songs;
+    private List<PlaylistSongResponse> songs;
 
 }
