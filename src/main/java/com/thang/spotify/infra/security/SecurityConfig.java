@@ -88,16 +88,10 @@ public class SecurityConfig {
                     auth.requestMatchers(WHITE_LIST).permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("LISTENER", "ADMIN", "ARTIST");
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/playlists").permitAll();
                     auth.anyRequest().authenticated();
                     }
                 )
-//                .oauth2Login(oauth2 -> oauth2
-//                        .authorizationEndpoint(auth -> auth.baseUri("/api/v1/auth/google")) // nút login redirect tới đây
-//                        .redirectionEndpoint(redir -> redir.baseUri("/api/v1/auth/google/callback")) // callback
-//                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService())) // lấy info user
-//                        .successHandler(oAuth2AuthenticationSuccessHandler())
-//                        .failureHandler(oAuth2AuthenticationFailureHandler())
-//                )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

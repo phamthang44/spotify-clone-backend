@@ -32,6 +32,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
@@ -165,9 +166,11 @@ public class AuthController {
             return forbidden("User account is not active");
         }
 
-        // --- 4. Generate new access token ---
+        //set context authentication
         SecurityUserDetails userDetails =
                 (SecurityUserDetails) userDetailsServiceImpl.loadUserByUsername(user.getEmail());
+
+        // --- 4. Generate new access token ---
         String newAccessToken = jwtTokenService.generateAccessToken(userDetails);
 
         // --- 5. Nếu refresh token còn hạn thì dùng lại ---

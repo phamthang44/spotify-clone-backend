@@ -4,7 +4,10 @@ import com.thang.spotify.common.enums.Privacy;
 import com.thang.spotify.common.util.PrivacyEnumConverter;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,8 +33,9 @@ public class Playlist extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    @Convert(converter = PrivacyEnumConverter.class)
+    @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "e_privacy", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Privacy privacy;
 
     @OneToMany(mappedBy = "playlist")
