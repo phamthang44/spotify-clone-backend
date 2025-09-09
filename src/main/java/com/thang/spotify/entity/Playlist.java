@@ -42,4 +42,7 @@ public class Playlist extends BaseEntity {
     @OrderBy("trackNumber ASC")
     private List<PlaylistSong> playlistSongs = new ArrayList<>();
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted;
+
 }

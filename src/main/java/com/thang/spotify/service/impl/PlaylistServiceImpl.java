@@ -1,12 +1,17 @@
 package com.thang.spotify.service.impl;
 
+import com.thang.spotify.common.enums.ErrorCode;
 import com.thang.spotify.common.enums.Privacy;
 import com.thang.spotify.common.mapper.PlaylistMapper;
 import com.thang.spotify.common.util.Util;
+import com.thang.spotify.dto.request.playlist.PlaylistPutRequest;
 import com.thang.spotify.dto.response.playlist.PlaylistResponse;
 import com.thang.spotify.entity.Playlist;
 import com.thang.spotify.entity.User;
+import com.thang.spotify.exception.AccessDeniedException;
 import com.thang.spotify.exception.InvalidDataException;
+import com.thang.spotify.exception.ResourceNotFoundException;
+import com.thang.spotify.exception.UnauthorizedException;
 import com.thang.spotify.repository.PlaylistRepository;
 import com.thang.spotify.repository.UserRepository;
 import com.thang.spotify.service.PlaylistService;
@@ -75,7 +80,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         Util.validateNumber(userId);
         User user = userService.getUserById(userId);
 
-        List<Playlist> playlists = playlistRepository.findAllByUserId(userId);
+        List<Playlist> playlists = playlistRepository.findAllByUserIdAndDeletedIsFalse(userId);
 
         if (playlists != null && !playlists.isEmpty()) {
             return playlists.stream()
@@ -84,5 +89,35 @@ public class PlaylistServiceImpl implements PlaylistService {
         }
 
         return List.of();
+    }
+
+    @Override
+    @Transactional
+    public PlaylistResponse editPlaylist(PlaylistPutRequest playlistPutRequest) {
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public void deletePlaylist(Long playlistId, Long userId) {
+        Playlist playlist = getOwnedPlaylistOrThrow(playlistId, userId);
+        playlist.setDeleted(true);
+        playlistRepository.save(playlist);
+    }
+
+    private Playlist getOwnedPlaylistOrThrow(Long playlistId, Long userId) {
+        Util.validateNumber(playlistId);
+
+        if (playlistId <= 0) {
+            log.error("Invalid playlist ID: {}", playlistId);
+            throw new InvalidDataException("Playlist ID must be greater than 0");
+        }
+
+        return playlistRepository.findByIdAndUserId(playlistId, userId)
+                .orElseThrow(() -> {
+                    log.error("User {} does not own playlist {}", userId, playlistId);
+                    return new AccessDeniedException(ErrorCode.ACCESS_DENIED,
+                            "You do not have permission to access this playlist");
+                });
     }
 }

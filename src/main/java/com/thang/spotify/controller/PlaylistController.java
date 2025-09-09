@@ -10,10 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -60,6 +57,22 @@ public class PlaylistController {
                 .data(playlist)
                 .build();
         return ResponseEntity.ok(responseData);
+    }
+
+    @DeleteMapping("/{playlistId}")
+    public ResponseEntity<ResponseData<Void>> deletePlaylist(@PathVariable Long playlistId,
+                                                             @AuthenticationPrincipal SecurityUserDetails user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        }
+
+        playlistService.deletePlaylist(playlistId, user.getId());
+        ResponseData<Void> responseData = ResponseData.<Void>builder()
+                .status(HttpStatus.NO_CONTENT.value())
+                .message("Playlist deleted successfully")
+                .data(null)
+                .build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(responseData);
     }
 
 }

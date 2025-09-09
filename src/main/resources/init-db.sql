@@ -351,3 +351,5 @@ CREATE TABLE public.verification_token (
                                     expiry_date TIMESTAMP NOT NULL,
                                     created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE public.playlist ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
