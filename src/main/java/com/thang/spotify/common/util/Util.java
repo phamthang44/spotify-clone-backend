@@ -1,6 +1,6 @@
 package com.thang.spotify.common.util;
 
-import com.thang.spotify.exception.InvalidDataException;
+import com.thang.spotify.common.exception.InvalidDataException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 

@@ -1,6 +1,6 @@
 package com.thang.spotify.infra.security;
 
-import com.thang.spotify.entity.User;
+import com.thang.spotify.feature.user.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
